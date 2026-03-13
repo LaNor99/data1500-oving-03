@@ -110,6 +110,30 @@ GRANT USAGE ON SCHEMA public TO student_role;
 \dp emneregistreringer
 ```
 
+`\du` viser:
+                                                 List of roles
+            Role name            |                         Attributes                         |   Member of
+---------------------------------+------------------------------------------------------------+----------------
+ admin                           | Superuser, Create role, Create DB, Replication, Bypass RLS | {}
+ admin_role                      |                                                            | {}
+ backup_bruker                   |                                                            | {}
+ emne_leser                      |                                                            | {}
+ foreleser_role                  |                                                            | {}
+ karakter_oppdaterer             |                                                            | {}
+ ola.nordmann@student.oslomet.no |                                                            | {}
+ program_ansvarlig               |                                                            | {}
+ student_1                       |                                                            | {student_role}
+ student_2                       |                                                            | {student_role}
+ student_3                       |                                                            | {student_role}
+ student_role                    |                                                            | {}
+ student_self_role               |                                                            | {}
+
+`\du emneregistreringer` viser:
+           List of roles
+ Role name | Attributes | Member of
+-----------+------------+-----------
+
+
 ### Del 2: Implementer RLS for Studenter
 
 **Hva du skal gjøre:**
@@ -144,6 +168,15 @@ CREATE POLICY student_see_own_grades ON emneregistreringer
 SELECT * FROM pg_policies WHERE tablename = 'emneregistreringer';
 ```
 
+Verifiseringen viser:
+ schemaname |     tablename      |       policyname       | permissive |  roles   |  cmd   |                             qual                             | with_check
+------------+--------------------+------------------------+------------+----------+--------+--------------------------------------------------------------+------------
+ public     | emneregistreringer | student_see_own_grades | PERMISSIVE | {public} | SELECT | (student_id = ( SELECT bruker_student_mapping.student_id     |
+            |                    |                        |            |          |        |    FROM bruker_student_mapping                               |
+            |                    |                        |            |          |        |   WHERE (bruker_student_mapping.brukernavn = CURRENT_USER))) |
+(1 row)
+
+
 ### Del 3: Test RLS for Studenter
 
 **Test 1: Logg inn som student_1**
@@ -166,6 +199,18 @@ SELECT * FROM emneregistreringer WHERE student_id = 2;
 \q
 ```
 
+`SELECT * FROM emneregistreringer;` viser:
+ registrering_id | student_id | emne_id | semester | karakter |      registrert_dato
+-----------------+------------+---------+----------+----------+----------------------------
+               2 |          1 |       2 | 2024H    | B        | 2026-03-12 03:16:49.628207
+               1 |          1 |       1 | 2024H    | A        | 2026-03-12 03:16:49.628207
+(2 rows)
+
+`SELECT * FROM emneregistreringer WHERE student_id = 2;` viser:
+ registrering_id | student_id | emne_id | semester | karakter | registrert_dato
+-----------------+------------+---------+----------+----------+-----------------
+(0 rows)
+
 **Test 2: Logg inn som student_2**
 
 ```bash
@@ -178,9 +223,20 @@ docker-compose exec postgres psql -U student_2 -d data1500_db
 SELECT * FROM emneregistreringer;
 -- Forventet: 1 rad (student_2 sine karakterer)
 
+-- Viser:
+ registrering_id | student_id | emne_id | semester | karakter |      registrert_dato
+-----------------+------------+---------+----------+----------+----------------------------
+               3 |          2 |       1 | 2024H    | B        | 2026-03-12 03:16:49.628207
+(1 row)
+
 -- Avslutt
 \q
 ```
+Viser:
+ registrering_id | student_id | emne_id | semester | karakter |      registrert_dato
+-----------------+------------+---------+----------+----------+----------------------------
+               3 |          2 |       1 | 2024H    | B        | 2026-03-12 03:16:49.628207
+(1 row)
 
 **Test 3: Logg inn som student_3**
 
@@ -193,6 +249,12 @@ docker-compose exec postgres psql -U student_3 -d data1500_db
 -- Skal bare se karakterer for student_3 (student_id = 3)
 SELECT * FROM emneregistreringer;
 -- Forventet: 1 rad (student_3 sine karakterer)
+   
+-- Viser:
+ registrering_id | student_id | emne_id | semester | karakter |      registrert_dato
+-----------------+------------+---------+----------+----------+----------------------------
+               4 |          3 |       3 | 2024H    | A        | 2026-03-12 03:16:49.628207
+(1 row)
 
 -- Avslutt
 \q
@@ -209,6 +271,16 @@ docker-compose exec postgres psql -U admin -d data1500_db
 -- Admin skal se alle karakterer (RLS gjelder ikke for admin)
 SELECT * FROM emneregistreringer;
 -- Forventet: 4 rader (alle karakterer)
+   
+-- Viser:
+ registrering_id | student_id | emne_id | semester | karakter |      registrert_dato
+-----------------+------------+---------+----------+----------+----------------------------
+               2 |          1 |       2 | 2024H    | B        | 2026-03-12 03:16:49.628207
+               3 |          2 |       1 | 2024H    | B        | 2026-03-12 03:16:49.628207
+               4 |          3 |       3 | 2024H    | A        | 2026-03-12 03:16:49.628207
+               5 |          4 |       4 | 2024H    | C        | 2026-03-12 03:16:49.628207
+               1 |          1 |       1 | 2024H    | A        | 2026-03-12 03:16:49.628207
+(5 rows)
 
 -- Avslutt
 \q
@@ -263,14 +335,30 @@ docker-compose exec postgres psql -U student_1 -d data1500_db
 -- Skal fungere (viewet)
 SELECT * FROM student_info_limited;
 -- Forventet: Alle studenter (uten e-postadresser)
+   
+-- Viser:
+ student_id | fornavn | etternavn | program_id
+------------+---------+-----------+------------
+          1 | Ola     | Nordmann  |          1
+          2 | Kari    | Normann   |          1
+          3 | Per     | Larsen    |          2
+          4 | Anna    | Johansen  |          3
+          5 | Test    | Bruker    |          1
+(5 rows)
 
 -- Skal IKKE fungere (original-tabellen)
 SELECT * FROM studenter;
 -- Forventet: Feil "permission denied for table studenter"
+   
+-- Viser: 
+ERROR:  permission denied for table studenter
 
 -- Skal IKKE kunne se e-postadresser
 SELECT epost FROM student_info_limited;
 -- Forventet: Feil "column epost does not exist"
+   
+-- Viser:
+ERROR:  column "epost" does not exist
 
 -- Avslutt
 \q
@@ -330,15 +418,46 @@ docker-compose exec postgres psql -U foreleser_1 -d data1500_db
 # Password: foreleser123
 ```
 
+For at sql-spørringene nedenfor skal funke for foreleser_1, må vi gi brukeren lesetilgang til mapping-tabellen. Og 
+opprette en SELECT-policy spesifikt for forelesere.
+```sql
+-- Gi foreleser-rollen lese-tilgang til mapping-tabellen
+GRANT SELECT ON bruker_student_mapping TO foreleser_role;
+
+-- Opprett en SELECT-policy spesifikt for forelesere
+CREATE POLICY foreleser_select_all ON emneregistreringer
+    FOR SELECT 
+    TO foreleser_role 
+    USING (true);
+```
+
 ```sql
 -- Skal se alle karakterer
 SELECT * FROM emneregistreringer;
 
+-- Viser:
+ registrering_id | student_id | emne_id | semester | karakter |      registrert_dato
+-----------------+------------+---------+----------+----------+----------------------------
+               2 |          1 |       2 | 2024H    | B        | 2026-03-12 03:16:49.628207
+               3 |          2 |       1 | 2024H    | B        | 2026-03-12 03:16:49.628207
+               4 |          3 |       3 | 2024H    | A        | 2026-03-12 03:16:49.628207
+               5 |          4 |       4 | 2024H    | C        | 2026-03-12 03:16:49.628207
+               1 |          1 |       1 | 2024H    | A        | 2026-03-12 03:16:49.628207
+(5 rows)
+
 -- Skal kunne oppdatere karakterer
 UPDATE emneregistreringer SET karakter = 'A' WHERE registrering_id = 1;
 
+-- Viser: UPDATE 1
+
 -- Verifiser oppdateringen
 SELECT * FROM emneregistreringer WHERE registrering_id = 1;
+
+-- Viser:
+ registrering_id | student_id | emne_id | semester | karakter |      registrert_dato
+-----------------+------------+---------+----------+----------+----------------------------
+               1 |          1 |       1 | 2024H    | A        | 2026-03-12 03:16:49.628207
+(1 row)
 
 -- Avslutt
 \q
@@ -361,7 +480,9 @@ SELECT * FROM emneregistreringer WHERE registrering_id = 1;
 5. **Lag en audit-tabell som logger alle endringer av karakterer**
    - Hint: Bruk triggers (se Bonus-seksjonen under)
 
-**Viktig:** Lagre alle SQL-spørringene og SQL-setnigene dine i en fil `oppgave3_losning.sql` i mappen `test-scripts` for at man kan teste disse med kommando (OBS! du må forsikre at spørringene / setnignen ikke påvirker databaseintegritet/ønsket resultat, hvis de utføres flere ganger):
+**Viktig:** Lagre alle SQL-spørringene og SQL-setnigene dine i en fil `oppgave4_losning.sql` i mappen `test-scripts` for 
+at man kan teste disse med kommando (OBS! du må forsikre at spørringene / setnignen ikke påvirker databaseintegritet/ønsket 
+resultat, hvis de utføres flere ganger):
 
 ```bash
 docker-compose exec postgres psql -U admin -d data1500_db -f test-scripts/oppgave3_losning.sql
@@ -425,6 +546,12 @@ UPDATE emneregistreringer SET karakter = 'A+' WHERE registrering_id = 1;
 
 -- Se audit-loggen
 SELECT * FROM audit_log;
+
+-- Viser:
+ log_id |    tabell_navn     | operasjon | bruker |                                                                  endret_data                                                                  |         endret_tid
+--------+--------------------+-----------+--------+-----------------------------------------------------------------------------------------------------------------------------------------------+----------------------------
+      1 | emneregistreringer | UPDATE    | admin  | {"emne_id": 1, "karakter": "A+", "semester": "2024H", "student_id": 1, "registrering_id": 1, "registrert_dato": "2026-03-12T03:16:49.628207"} | 2026-03-13 12:55:14.168072
+(1 row)
 ```
 
 ---
