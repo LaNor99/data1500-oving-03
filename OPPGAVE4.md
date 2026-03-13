@@ -107,32 +107,33 @@ GRANT USAGE ON SCHEMA public TO student_role;
 -- 7. Verifiser rettigheter
 -- ============================================================
 \du
-\dp emneregistreringer
-```
 
-`\du` viser:
+-- Viser:
                                                  List of roles
             Role name            |                         Attributes                         |   Member of
 ---------------------------------+------------------------------------------------------------+----------------
  admin                           | Superuser, Create role, Create DB, Replication, Bypass RLS | {}
- admin_role                      |                                                            | {}
- backup_bruker                   |                                                            | {}
- emne_leser                      |                                                            | {}
- foreleser_role                  |                                                            | {}
- karakter_oppdaterer             |                                                            | {}
- ola.nordmann@student.oslomet.no |                                                            | {}
- program_ansvarlig               |                                                            | {}
- student_1                       |                                                            | {student_role}
- student_2                       |                                                            | {student_role}
- student_3                       |                                                            | {student_role}
- student_role                    |                                                            | {}
- student_self_role               |                                                            | {}
+    admin_role                      |                                                            | {}
+    backup_bruker                   |                                                            | {}
+    emne_leser                      |                                                            | {}
+    foreleser_role                  |                                                            | {}
+    karakter_oppdaterer             |                                                            | {}
+    ola.nordmann@student.oslomet.no |                                                            | {}
+    program_ansvarlig               |                                                            | {}
+    student_1                       |                                                            | {student_role}
+    student_2                       |                                                            | {student_role}
+    student_3                       |                                                            | {student_role}
+    student_role                    |                                                            | {}
+    student_self_role               |                                                            | {}
 
-`\du emneregistreringer` viser:
+\dp emneregistreringer
+
+-- Viser:
            List of roles
  Role name | Attributes | Member of
 -----------+------------+-----------
 
+```
 
 ### Del 2: Implementer RLS for Studenter
 
@@ -166,16 +167,15 @@ CREATE POLICY student_see_own_grades ON emneregistreringer
 -- 3. Verifiser policyen
 -- ============================================================
 SELECT * FROM pg_policies WHERE tablename = 'emneregistreringer';
-```
 
-Verifiseringen viser:
+-- Verifiseringen viser:
  schemaname |     tablename      |       policyname       | permissive |  roles   |  cmd   |                             qual                             | with_check
 ------------+--------------------+------------------------+------------+----------+--------+--------------------------------------------------------------+------------
  public     | emneregistreringer | student_see_own_grades | PERMISSIVE | {public} | SELECT | (student_id = ( SELECT bruker_student_mapping.student_id     |
             |                    |                        |            |          |        |    FROM bruker_student_mapping                               |
             |                    |                        |            |          |        |   WHERE (bruker_student_mapping.brukernavn = CURRENT_USER))) |
 (1 row)
-
+```
 
 ### Del 3: Test RLS for Studenter
 
@@ -191,25 +191,25 @@ docker-compose exec postgres psql -U student_1 -d data1500_db
 SELECT * FROM emneregistreringer;
 -- Forventet: 1 rad (student_1 sine karakterer)
 
--- Prøv å se karakterer for student_2 (skal IKKE fungere)
-SELECT * FROM emneregistreringer WHERE student_id = 2;
--- Forventet: 0 rader (RLS-policyen blokkerer det)
-
--- Avslutt
-\q
-```
-
-`SELECT * FROM emneregistreringer;` viser:
+-- Viser:
  registrering_id | student_id | emne_id | semester | karakter |      registrert_dato
 -----------------+------------+---------+----------+----------+----------------------------
                2 |          1 |       2 | 2024H    | B        | 2026-03-12 03:16:49.628207
                1 |          1 |       1 | 2024H    | A        | 2026-03-12 03:16:49.628207
 (2 rows)
 
-`SELECT * FROM emneregistreringer WHERE student_id = 2;` viser:
+-- Prøv å se karakterer for student_2 (skal IKKE fungere)
+SELECT * FROM emneregistreringer WHERE student_id = 2;
+-- Forventet: 0 rader (RLS-policyen blokkerer det)
+
+-- Viser:
  registrering_id | student_id | emne_id | semester | karakter | registrert_dato
 -----------------+------------+---------+----------+----------+-----------------
 (0 rows)
+
+-- Avslutt
+\q
+```
 
 **Test 2: Logg inn som student_2**
 
@@ -232,11 +232,6 @@ SELECT * FROM emneregistreringer;
 -- Avslutt
 \q
 ```
-Viser:
- registrering_id | student_id | emne_id | semester | karakter |      registrert_dato
------------------+------------+---------+----------+----------+----------------------------
-               3 |          2 |       1 | 2024H    | B        | 2026-03-12 03:16:49.628207
-(1 row)
 
 **Test 3: Logg inn som student_3**
 

@@ -56,8 +56,8 @@ vil kommandoen `\d` liste ut alle tabeller, views og sekvenser i den gjeldende d
 
 ```sql
 SELECT fornavn, etternavn, epost FROM studenter;
-```
-Viser:
+
+-- Viser:
 fornavn | etternavn |              epost
 ---------+-----------+----------------------------------
 Ola     | Nordmann  | ola.nordmann@student.oslomet.no
@@ -65,13 +65,14 @@ Kari    | Normann   | kari.normann@student.oslomet.no
 Per     | Larsen    | per.larsen@student.oslomet.no
 Anna    | Johansen  | anna.johansen@student.oslomet.no
 (4 rows)
+```
 
 **1.2** Hent alle emner sortert etter emne_navn:
 
 ```sql
 SELECT emne_kode, emne_navn, studiepoeng FROM emner ORDER BY emne_navn;
-```
-Viser:
+
+-- Viser:
 emne_kode |       emne_navn       | studiepoeng
 -----------+-----------------------+-------------
 DATA1500  | Databaser             |          10
@@ -79,18 +80,20 @@ DATA2200  | Databasesystemer      |          10
 DATA3100  | Distribuerte systemer |          10
 DATA1100  | Programmering         |          10
 (4 rows)
+```
 
 **1.3** Hent alle studenter fra Informatikk-programmet (program_id = 1):
 
 ```sql
 SELECT fornavn, etternavn, epost FROM studenter WHERE program_id = 1;
-```
-Viser:
+
+-- Viser:
 fornavn | etternavn |              epost
 ---------+-----------+---------------------------------
 Ola     | Nordmann  | ola.nordmann@student.oslomet.no
 Kari    | Normann   | kari.normann@student.oslomet.no
 (2 rows)
+```
 
 ### Del 2: JOIN-spørringer
 
@@ -103,8 +106,8 @@ SELECT
     p.program_navn
 FROM studenter s
 LEFT JOIN programmer p ON s.program_id = p.program_id;
-```
-Viser:
+
+-- Viser:
 fornavn | etternavn |  program_navn
 ---------+-----------+----------------
 Kari    | Normann   | Informatikk
@@ -112,6 +115,7 @@ Ola     | Nordmann  | Informatikk
 Per     | Larsen    | Data Science
 Anna    | Johansen  | Cybersikkerhet
 (4 rows)
+```
 
 **2.2** Hent alle emneregistreringer med studentnavn og emnenavn:
 
@@ -126,8 +130,8 @@ FROM emneregistreringer er
 JOIN studenter s ON er.student_id = s.student_id
 JOIN emner e ON er.emne_id = e.emne_id
 ORDER BY s.etternavn, e.emne_navn;
-```
-Viser:
+
+-- Viser:
 fornavn | etternavn |       emne_navn       | karakter | semester
 ---------+-----------+-----------------------+----------+----------
 Anna    | Johansen  | Distribuerte systemer | C        | 2024H
@@ -136,6 +140,7 @@ Ola     | Nordmann  | Databaser             | A        | 2024H
 Ola     | Nordmann  | Programmering         | B        | 2024H
 Kari    | Normann   | Databaser             | B        | 2024H
 (5 rows)
+```
 
 **2.3** Hent alle emner som DATA1500-studenter er registrert på:
 
@@ -146,13 +151,14 @@ JOIN emner e ON er.emne_id = e.emne_id
 WHERE er.student_id IN (
     SELECT student_id FROM studenter WHERE program_id = 1
 );
-```
-Viser:
+
+-- Viser:
 emne_kode |   emne_navn
 -----------+---------------
 DATA1100  | Programmering
 DATA1500  | Databaser
 (2 rows)
+```
 
 ### Del 3: Aggregatfunksjoner
 
@@ -166,14 +172,15 @@ FROM programmer p
 LEFT JOIN studenter s ON p.program_id = s.program_id
 GROUP BY p.program_id, p.program_navn
 ORDER BY antall_studenter DESC;
-```
-Viser:
+
+-- Viser:
 program_navn  | antall_studenter
 ----------------+------------------
 Informatikk    |                2
 Data Science   |                1
 Cybersikkerhet |                1
 (3 rows)
+```
 
 **3.2** Hent gjennomsnittlig karakter per emne:
 
@@ -186,7 +193,8 @@ JOIN emner e ON er.emne_id = e.emne_id
 WHERE er.karakter IS NOT NULL
 GROUP BY e.emne_id, e.emne_navn;
 ```
-```brukte denne sql-spørringen istedet, ettersom karakterer er lagret som bokstaver (A-F)
+```sql 
+-- brukte denne sql-spørringen istedet, ettersom karakterer er lagret som bokstaver (A-F)
 SELECT 
     e.emne_navn,
     ROUND(AVG(CASE 
@@ -201,8 +209,8 @@ FROM emneregistreringer er
 JOIN emner e ON er.emne_id = e.emne_id
 WHERE er.karakter IS NOT NULL
 GROUP BY e.emne_id, e.emne_navn;
-```
-Viser:
+
+-- Viser:
 emne_navn             | gjennomsnitt
 -----------------------+--------------
 Databaser             |          4.5
@@ -210,6 +218,7 @@ Programmering         |          4.0
 Databasesystemer      |          5.0
 Distribuerte systemer |          3.0
 (4 rows)
+```
 
 **3.3** Hent studenter som har flere enn 1 emneregistrering:
 
@@ -223,12 +232,13 @@ LEFT JOIN emneregistreringer er ON s.student_id = er.student_id
 GROUP BY s.student_id, s.fornavn, s.etternavn
 HAVING COUNT(er.registrering_id) > 1
 ORDER BY antall_emner DESC;
-```
-Viser:
+
+-- Viser:
 fornavn | etternavn | antall_emner
 ---------+-----------+--------------
 Ola     | Nordmann  |            2
 (1 row)
+```
 
 ### Del 4: Databaseskjema-analyse
 
@@ -246,14 +256,15 @@ JOIN information_schema.key_column_usage AS kcu
 JOIN information_schema.constraint_column_usage AS ccu
     ON ccu.constraint_name = tc.constraint_name
 WHERE tc.constraint_type = 'FOREIGN KEY';
-```
-Viser:
+
+-- Viser:
 table_name         | column_name | foreign_table_name | foreign_column_name
 -------------------+-------------+--------------------+---------------------
 studenter          | program_id  | programmer         | program_id
 emneregistreringer | student_id  | studenter          | student_id
 emneregistreringer | emne_id     | emner              | emne_id
 (3 rows)
+```
 
 **4.2** Hent alle indekser:
 
@@ -265,8 +276,8 @@ SELECT
 FROM pg_indexes
 WHERE schemaname = 'public'
 ORDER BY tablename, indexname;
-```
-Viser:
+
+-- Viser:
 schemaname |     tablename      |                     indexname
 ------------+--------------------+----------------------------------------------------
 public     | emner              | emner_emne_kode_key
@@ -281,6 +292,7 @@ public     | studenter          | idx_studenter_program
 public     | studenter          | studenter_epost_key
 public     | studenter          | studenter_pkey
 (11 rows)
+```
 
 ## Oppgaver du skal løse
 
